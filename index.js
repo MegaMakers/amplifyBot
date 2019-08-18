@@ -48,8 +48,8 @@ const notifyOfQueuedTweet = async function(params) {
 }
 
 const notifyOfTweet = async function(params) {
-  let msgToTweet = params.message.text;
-  msgToTweet = msgToTweet.replace(new RegExp(msgTxtForTweeting, 'g'),'')
+  let userId = params.message.user;
+  msgToTweet = postCache[userId].content;
 
   params.say(`Hey there <@${params.message.user}>! - Your tweet is being sent! Your tweet is: ${msgToTweet}`);
 
