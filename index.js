@@ -2,6 +2,7 @@ const { App } = require('@slack/bolt');
 const twitter = require('twitter');
 
 const msgTxtForTweeting = ':twitter:'
+const reactionCntForApproval = 3
 
 // Initialize Twitter
 var twitterClient = new twitter({
@@ -31,6 +32,7 @@ let slackPostEphemeral = async (channel, user, msgToSend, blocks) => {
 // debug mode:
 // - triggers pipeline on all messages (and not just ones with msgTxtForTweeting)
 // - disables posting to twitter and only dumps to console
+// - reactions can be from same user (for approvals)
 var debugMode = process.env.DEBUG_MODE || false;
 
 
@@ -38,9 +40,10 @@ var debugMode = process.env.DEBUG_MODE || false;
 // Pipeline methods
 // - need to return params if the pipeline is to continue
 
-
+////////////////////////////////////////////////////////
 // Message Pipeline
 // All receive params:{context, body, payload, event, message, say, next}
+////////////////////////////////////////////////////////
 
 const filterChannelJoins = async function(params) {
   if (params.message.subtype && params.message.subtype === 'channel_join') return;
@@ -99,7 +102,7 @@ const confirmMsgForTweet = async function(params) {
   return params;
 }
 
-// // QueueTweetWithExpiry will add the tweet and content to a cache which expires after a finite amount of time (default 15 minutes).
+// QueueTweetWithExpiry will add the tweet and content to a cache which expires after a finite amount of time (default 15 minutes).
 const queueTweetWithExpiry = function(expiryInMS = 1000 * 60 * 15) {
   let queueTweet = async function(params) {
     let msgToTweet = params.message.text;
@@ -157,23 +160,11 @@ const checkSpecificPrefix = function(prefix) {
 // }
 
 
-const processPipe = async function(pipeName, pipe, params) {
-  console.log(`==> [${pipeName}] Received notification`);
 
-  for (let processor of pipe) {
-    console.log(`==> [${pipeName}] Processing with processor: ${processor.name}`)
-    params = await processor(params);
-    if (!params) {
-      console.log(`<== [${pipeName}] Finished processing`)
-      return;
-    }
-  }
-  console.log(`<== [${pipeName}] Finished processing`)
-}
-
-
-// Message Pipeline
+////////////////////////////////////////////////////////
+// Confirmation Pipeline
 // All receive params:{context, body, payload, action, respond, ack, say, next}
+////////////////////////////////////////////////////////
 
 const checkForConfirmation = async function(params) {
   if (params.action.value === 'no') {
@@ -202,13 +193,59 @@ const checkConfirmationOnLatestMessage = async function(params) {
   }
   return params;
 }
-
-const tweet = async function(params) {
-  let msgId = params.action.action_id.split('_')[1];
+const registerConfirmation = async function(params) {
   let userId = params.body.user.id;
   let postInfo = postCache[userId];
+  postInfo.confirmation = true;
 
-  await slackPostEphemeral(params.body.container.channel_id, params.body.user.id, `Going ahead and tweeting: ${postInfo.content}`);
+  await slackPostEphemeral(params.body.container.channel_id, params.body.user.id, `Great! I will tweet and let you know as soon as I get ${reactionCntForApproval} reactions on the posts.`);
+
+  return params;
+}
+
+
+////////////////////////////////////////////////////////
+// Event Pipeline
+// All receive params:{context, body, payload, event, say, next}
+////////////////////////////////////////////////////////
+
+const checkIfConfirmed = async function(params) {
+  let postInfo = postCache[params.event.item_user];
+  if (!postInfo) {
+    console.log('Reaction on post that was not found')
+    return;
+  }
+  if (postInfo.id !== params.event.item.ts) {
+    console.log('Reaction on post that was not confirmed')
+    return;
+  }
+  return params;
+}
+const checkIfReactionFromSameUser = async function(params) {
+  if (debugMode) return params;
+  if (params.event.item_user === params.event.user) return;
+  return params;
+}
+const registerReaction = async function(params) {
+  let postInfo = postCache[params.event.item_user];
+  if (!postInfo.reactionCnt) postInfo.reactionCnt = 0;
+  postInfo.reactionCnt++;
+  console.log('Reaction count on message: ', postInfo.reactionCnt);
+  return params;
+}
+const checkIfReactionThreshold = async function(params) {
+  let postInfo = postCache[params.event.item_user];
+  if (postInfo.reactionCnt<reactionCntForApproval) {
+    return;
+  }
+  return params;
+}
+const tweet = async function(params) {
+  let msgId = params.event.item.ts;
+  let userId = params.event.item_user;
+  let postInfo = postCache[userId];
+
+  await slackPostEphemeral(params.event.item.channel, params.event.item_user, `Hey <@${params.message.user}>! - We got enough reactions. I am going ahead and tweeting: ${postInfo.content}`);
 
   let tweetRet;
   if (!debugMode) {
@@ -222,15 +259,35 @@ const tweet = async function(params) {
   return params;
 }
 
+////////////////////////////////////////////////////////
 // Generic Pipeline
+////////////////////////////////////////////////////////
 
 const printDbg = async function(params) {
-  if (params.message) console.log('Debug - message:', params.message);
+  if (params.message) {
+    console.log('Debug - message:', params.message);
+    return params;
+  }
   if (params.action) console.log('Debug - action:', params.action);
+  if (params.event) console.log('Debug - event:', params.event);
   return params;
 }
 
 // Hook up the pipelines
+const processPipe = async function(pipeName, pipe, params) {
+  console.log(`==> [${pipeName}] Received notification`);
+
+  for (let processor of pipe) {
+    console.log(`==> [${pipeName}] Processing with processor: ${processor.name}`)
+    params = await processor(params);
+    if (!params) {
+      console.log(`<== [${pipeName}] Finished processing`)
+      return;
+    }
+  }
+  console.log(`<== [${pipeName}] Finished processing`)
+}
+
 
 const messagePipeline = [
   filterChannelJoins,
@@ -247,17 +304,32 @@ app.message(async (params) => {
 
 
 const tweetConfirmationPipeline = [
-  printDbg,
   checkForConfirmation,
   checkForMessagesQueuedFromUser,
   checkConfirmationOnLatestMessage,
-  tweet
+  registerConfirmation,
+  printDbg
 ];
 
 app.action(/tweetConfirmation.*/, async (params) => {
   params.ack();
   await processPipe('tweetConfirmation', tweetConfirmationPipeline, params);
 });
+
+
+const reactionAddedPipeline = [
+  checkIfConfirmed,
+  checkIfReactionFromSameUser,
+  registerReaction,
+  checkIfReactionThreshold,
+  tweet,
+  printDbg
+];
+
+app.event('reaction_added', async (params) => {
+  await processPipe('reactionAdded', reactionAddedPipeline, params);
+});
+
 
 // Start the app
 (async () => {
