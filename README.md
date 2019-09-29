@@ -41,6 +41,7 @@ You will need to create an app for development purposes to test with. It's best 
     - message.groups
     - message.im
     - message.mpim
+    - reaction_added
 - Save Changes
 - Enable Interactive Components for your app
   - As above type in your ngrok address with `/slack/events` on the end (eg. https://ffs3423.ngrok.io/slack/events)
