@@ -46,6 +46,9 @@ You will need to create an app for development purposes to test with. It's best 
 - Enable Interactive Components for your app
   - As above type in your ngrok address with `/slack/events` on the end (eg. https://ffs3423.ngrok.io/slack/events)
 - Save Changes
+- Enable Interactive Components for your app
+  - As above type in your ngrok address with `/slack/events` on the end (eg. https://ffs3423.ngrok.io/slack/events)
+- Save Changes
 - Head back to "Basic Information" and reinstall your app under the "Install your app to your workspace" dropdown
 - Go to the channel that you want to use and make sure to add the bot as an app into the channel.
 
