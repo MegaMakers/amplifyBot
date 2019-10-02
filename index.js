@@ -2,8 +2,9 @@ const { App } = require('@slack/bolt');
 const twitter = require('twitter');
 const emoji = require('node-emoji');
 
-const msgTxtForTweeting = ':twitter:'
-const reactionCntForApproval = 3
+const msgTxtForTweeting = ':twitter:';
+const reactionCntForApproval = 3;
+const userPostLimit = 1000 * 60 * 1; // 1 post per 1 min
 
 // Initialize Twitter
 var twitterClient = new twitter({
@@ -309,7 +310,7 @@ const processPipe = async function(pipeName, pipe, params) {
 const messagePipeline = [
   filterChannelJoins,
   checkSpecificPrefix(msgTxtForTweeting),
-  checkUserPostLimits(1000 * 60 * 1), // 1 min
+  checkUserPostLimits(userPostLimit),
   queueTweetWithExpiry(1000 * 60 * 15), // 15 min
   confirmMsgForTweet,
   printDbg
