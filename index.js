@@ -1,5 +1,6 @@
 const { App } = require('@slack/bolt');
 const twitter = require('twitter');
+const emoji = require('node-emoji');
 
 const msgTxtForTweeting = ':twitter:'
 const reactionCntForApproval = 3
@@ -35,6 +36,20 @@ let slackPostEphemeral = async (channel, user, msgToSend, blocks) => {
 // - reactions can be from same user (for approvals)
 var debugMode = process.env.DEBUG_MODE || false;
 
+const extractText = function(slackMsg) {
+  let extractedMsg = slackMsg.text;
+
+  // remove the twitter indicator
+  extractedMsg = extractedMsg.replace(new RegExp(msgTxtForTweeting, 'g'),'');
+
+  // convert emoticons from slack representation to twitter
+  extractedMsg = emoji.emojify(extractedMsg);
+
+  // strip <> from url's
+  extractedMsg = extractedMsg.replace(/(\s*)<(http[^\s]*)>(\s*)/g,'$1$2$3');
+
+  return extractedMsg;
+}
 
 
 // Pipeline methods
@@ -65,8 +80,7 @@ const checkUserPostLimits = function(validDelay) {
 }
 
 const confirmMsgForTweet = async function(params) {
-  let msgToTweet = params.message.text;
-  msgToTweet = msgToTweet.replace(new RegExp(msgTxtForTweeting, 'g'),'')
+  let msgToTweet = extractText(params.message);
 
   let notifyTxt = 'Want me to tweet?'
   let msgToSend = `Hey there <@${params.message.user}>! - I can tweet that for you.`;
@@ -105,8 +119,7 @@ const confirmMsgForTweet = async function(params) {
 // QueueTweetWithExpiry will add the tweet and content to a cache which expires after a finite amount of time (default 15 minutes).
 const queueTweetWithExpiry = function(expiryInMS = 1000 * 60 * 15) {
   let queueTweet = async function(params) {
-    let msgToTweet = params.message.text;
-    msgToTweet = msgToTweet.replace(new RegExp(msgTxtForTweeting, 'g'),'')
+    let msgToTweet = extractText(params.message);
     let userId = params.message.user;
     postCache[userId] = {
       id: params.message.ts,
@@ -134,7 +147,7 @@ const queueTweetWithExpiry = function(expiryInMS = 1000 * 60 * 15) {
 // checkPrefix validates that the message we want to tweet starts with :twitter:
 const checkSpecificPrefix = function(prefix) {
   const checkPrefix = async function(params) {
-    let msgToTweet = params.message.text;
+    let msgToTweet = extractText(params.message);
 
     if (debugMode) {
       console.log(`DEBUG_MODE: skipping prefix check`);

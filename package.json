@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@slack/bolt": "^1.2.0",
+    "node-emoji": "^1.10.0",
     "twitter": "^1.7.1"
   }
 }
