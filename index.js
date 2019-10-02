@@ -246,11 +246,10 @@ const checkIfReactionThreshold = async function(params) {
   return params;
 }
 const tweet = async function(params) {
-  let msgId = params.event.item.ts;
   let userId = params.event.item_user;
   let postInfo = postCache[userId];
 
-  await slackPostEphemeral(params.event.item.channel, params.event.item_user, `Hey <@${params.message.user}>! - We got enough reactions. I am going ahead and tweeting: ${postInfo.content}`);
+  await slackPostEphemeral(params.event.item.channel, params.event.item_user, `Hey <@${userId}>! - We got enough reactions. I am going ahead and tweeting: ${postInfo.content}`);
 
   let tweetRet;
   if (!debugMode) {
