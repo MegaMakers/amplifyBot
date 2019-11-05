@@ -160,7 +160,7 @@ const checkSpecificPrefix = function(prefix) {
       return;
     }
 
-    if (!msgToTweet.startsWith(prefix)) {
+    if (!params.message.text.startsWith(prefix)) {
       console.log(`Message does not start with ${prefix}, ignoring`);
       return;
     }
