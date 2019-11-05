@@ -85,7 +85,7 @@ const confirmMsgForTweet = async function(params) {
 
   let notifyTxt = 'Want me to tweet?'
   let msgToSend = `Hey there <@${params.message.user}>! - I can tweet that for you.`;
-  let prompt = `Shall I go ahead and tweet: '${msgToTweet}'?`;
+  let prompt = `Shall I go ahead and tweet: '${msgToTweet}'? A small note, I don't currently support emojis, while they might show up in Slack they won't appear on Twitter.`;
 
   let getButtonBlock = (actionId, actionValue, btnText, btnStyle)=>{
     return {
