@@ -95,7 +95,7 @@ const confirmMsgForTweet = async function(params) {
 \`\`\`
 ${msgToTweet}
 \`\`\`
-Note: I don't currently support emojis, while they might show up in Slack they won't appear on Twitter.`;
+Note: I don't currently *all* support emojis, while they might show up in Slack they won't appear on Twitter.`;
 
   let getButtonBlock = (actionId, actionValue, btnText, btnStyle)=>{
     return {
