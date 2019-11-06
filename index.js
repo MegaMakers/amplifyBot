@@ -47,7 +47,13 @@ const extractText = function(slackMsg) {
   extractedMsg = emoji.emojify(extractedMsg);
 
   // strip <> from url's
-  extractedMsg = extractedMsg.replace(/(\s*)<(http[^\s]*)>(\s*)/g,'$1$2$3');
+  while (extractedMsg.match(/<http[^\s]*>/)) {
+    var prefix = extractedMsg.match(/(.*)<http[^\s]*>/)[1];
+    var urlEndNdx = extractedMsg.indexOf('>', prefix.length);
+    var url = extractedMsg.substring(prefix.length+1, urlEndNdx);
+    if (url.indexOf('|') != -1) url = url.substring(url.indexOf('|')+1);
+    extractedMsg = prefix + url + extractedMsg.substring(urlEndNdx+1);
+  }
 
   return extractedMsg;
 }
