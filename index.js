@@ -273,7 +273,11 @@ const tweet = async function(params) {
   let userId = params.event.item_user;
   let postInfo = postCache[userId];
 
-  await slackPostEphemeral(params.event.item.channel, params.event.item_user, `Hey <@${userId}>! - We got enough reactions. I am going ahead and tweeting: ${postInfo.content}`);
+  try{
+    await slackPostEphemeral(params.event.item.channel, params.event.item_user, `Hey <@${userId}>! - We got enough reactions. I am going ahead and tweeting: ${postInfo.content}`);
+  } catch (err) {
+    console.log('Err posting to to slack!!!', err);
+  }
 
   let tweetRet;
   if (!debugMode) {
