@@ -277,7 +277,11 @@ const tweet = async function(params) {
 
   let tweetRet;
   if (!debugMode) {
-    tweetRet = await twitterClient.post('statuses/update', {status: postInfo.content});
+    try {
+      tweetRet = await twitterClient.post('statuses/update', {status: postInfo.content});
+    } catch (err) {
+      console.log('Err posting to twitter!!!', err);
+    }
   } else {
     tweetRet = { status: 'DEBUG_MODE: did not really send' };
   }
