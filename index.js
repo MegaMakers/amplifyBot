@@ -4,7 +4,7 @@ const emoji = require('node-emoji');
 
 const msgTxtForTweeting = ':twitter:';
 const reactionCntForApproval = 3;
-const userPostLimit = 1000 * 60 * 1; // 1 post per 1 min
+const userPostLimit = 1000 * 60 * 1 * 60 * 24; // 1 post per 24 hours
 
 // Initialize Twitter
 var twitterClient = new twitter({
