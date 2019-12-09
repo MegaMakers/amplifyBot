@@ -1,0 +1,57 @@
+###############################################################################
+#
+#   Mako Pipelines
+#   
+#   CLI Version:        v0.0.6-32-gb29628a
+#   Pipeline Service:   GitHub Actions 
+#   App Name:           amplifyBot
+#   Deployment:         default
+#   Team:               productpeopleclub
+#
+#   Documentation:      https://mako.digitalocean.com/docs/pipelines
+#
+###############################################################################
+
+name: Deploy_amplifyBot_default
+
+
+# Triggers
+
+# triggers when a new push to the master branch occurs
+on:
+  push:
+    branches:
+    - master
+
+# triggers when a new tag of any value is pushed
+# on:
+#   push:
+#     tags:
+#     - '*'
+
+# triggers when a new GitHub release is created
+# on:
+#   release:
+#     types: [published]
+
+
+# Jobs
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Check out project code
+      uses: actions/checkout@v1
+
+    - name: Deploy App to Mako
+      uses: digitalocean-mako/action@master
+      with:
+        mako_token: ${{ secrets.MAKO_TOKEN }}
+        app_name: amplifyBot
+        app_deployment: default
+        app_team: productpeopleclub
+
+# EOF
