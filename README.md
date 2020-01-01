@@ -55,3 +55,11 @@ You will need to create an app for development purposes to test with. It's best 
 #### Usage
 
 With the above environment variables set, start the node project as `node index.js`.
+
+## Deployment & Debugging
+
+This project has been set to be auto-deployed on push to github via [mako](https://mako.digitalocean.com). Once the cli is installed you can access logs by typing:
+
+- `mako get logs -h` to get help
+- `mako get logs` to get logs pushed to you as they happen
+- `mako get logs -r` to get recent logs and `mako get logs -r -n=100` to get the most recent 100 logs
