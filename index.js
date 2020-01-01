@@ -40,6 +40,11 @@ var debugMode = process.env.DEBUG_MODE || false;
 const extractText = function(slackMsg) {
   let extractedMsg = slackMsg.text;
 
+  if (!extractedMsg) {
+    console.log('ERR: Requested extractText but no found text. Full message:', slackMsg);
+    return null;
+  }
+
   // remove the twitter indicator
   extractedMsg = extractedMsg.replace(new RegExp(msgTxtForTweeting, 'g'),'');
 
