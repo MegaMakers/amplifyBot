@@ -287,7 +287,24 @@ const tweet = async function(params) {
   let tweetRet;
   if (!debugMode) {
     try {
-      tweetRet = await twitterClient.post('statuses/update', {status: postInfo.content});
+      var tweetMatch = postInfo.content.match(/https:..twitter.com.[^/]*.status.(\d*)/);
+      // returns [0: tweet url, 1: tweet id]
+
+      if (tweetMatch && postInfo.content.length == tweetMatch[0].length) {
+        // pure retweet
+        var tweetId = tweetMatch[1];
+        tweetRet = await twitterClient.post(`statuses/retweet/${tweetId}`, {});
+      } else {
+        var twitterMsg = {
+          status: postInfo.content
+        };
+        if (tweetMatch && postInfo.content.length == tweetMatch.index + tweetMatch[0].length) {
+          // tweet with text (no text after tweet)
+          twitterMsg.status = twitterMsg.status.substring(0, tweetMatch.index).trim();
+          twitterMsg.attachment_url = tweetMatch[0];
+        }
+        tweetRet = await twitterClient.post('statuses/update', twitterMsg);
+      }
     } catch (err) {
       console.log('Err posting to twitter!!!', err);
     }
@@ -298,6 +315,18 @@ const tweet = async function(params) {
 
   delete postCache.userId;
   return params;
+}
+// exists for testing
+const forceTweet = async function(txt) {
+  var params = {
+    event: {
+      item_user: 'FAKE_ID'
+    }
+  }
+  postCache['FAKE_ID'] = {
+    content: txt
+  };
+  await tweet(params)
 }
 
 ////////////////////////////////////////////////////////
