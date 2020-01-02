@@ -3,6 +3,7 @@ const twitter = require('twitter');
 const emoji = require('node-emoji');
 
 const msgTxtForTweeting = ':twitter:';
+const patternForTwitterUrl = 'https:..twitter.com.[^/]*.status.(\d*)';
 const reactionCntForApproval = 3;
 const userPostLimit = 1000 * 60 * 1 * 60 * 24; // 1 post per 24 hours
 
@@ -160,30 +161,32 @@ const queueTweetWithExpiry = function(expiryInMS = 1000 * 60 * 15) {
 //     return params;
 // }
 
-// checkPrefix validates that the message we want to tweet starts with :twitter:
-const checkSpecificPrefix = function(prefix) {
-  const checkPrefix = async function(params) {
-    let msgToTweet = extractText(params.message);
+// checkRetweetPrefix validates that the message we want to tweet starts with :twitter: (or has a twitter url in it)
+const checkRetweetOrSpecificPrefix = function(prefix) {
+  const checkRetweetPrefix = async function(params) {
+    // if (debugMode) {
+    //   console.log(`DEBUG_MODE: skipping prefix check`);
+    //   return params;
+    // }
 
-    if (debugMode) {
-      console.log(`DEBUG_MODE: skipping prefix check`);
-      return params;
-    }
-
-    if (!msgToTweet) {
+    if (!params.message.text) {
       console.log(`Message not found ignoring - message.type: ${params.message.subtype}`);
       return;
     }
 
-    if (!params.message.text.startsWith(prefix)) {
-      console.log(`Message does not start with ${prefix}, ignoring`);
-      return;
+    if (params.message.text.startsWith(prefix)) {
+      return params;
     }
 
-    return params;
+    if (params.message.text.match(new RegExp(patternForTwitterUrl))) {
+      return params;
+    }
+
+    console.log(`Message does not start with '${prefix}' or does not include retweet - ignoring.`);
+    return;
   };
 
-  return checkPrefix;
+  return checkRetweetPrefix;
 }
 
 // const checkUserHasQueuedTweet = async function(params) {
@@ -287,7 +290,7 @@ const tweet = async function(params) {
   let tweetRet;
   if (!debugMode) {
     try {
-      var tweetMatch = postInfo.content.match(/https:..twitter.com.[^/]*.status.(\d*)/);
+      var tweetMatch = postInfo.content.match(new RegExp(patternForTwitterUrl));
       // returns [0: tweet url, 1: tweet id]
 
       if (tweetMatch && postInfo.content.length == tweetMatch[0].length) {
@@ -361,7 +364,7 @@ const processPipe = async function(pipeName, pipe, params) {
 
 const messagePipeline = [
   filterChannelJoins,
-  checkSpecificPrefix(msgTxtForTweeting),
+  checkRetweetOrSpecificPrefix(msgTxtForTweeting),
   checkUserPostLimits(userPostLimit),
   queueTweetWithExpiry(1000 * 60 * 15), // 15 min
   confirmMsgForTweet,
