@@ -258,6 +258,15 @@ const checkIfConfirmed = async function(params) {
   }
   return params;
 }
+const checkIfAlreadyTweeted = async function(params) {
+  let postInfo = postCache[params.event.item_user];
+  if (postInfo.tweeted) {
+    console.log('Reaction on post that was already tweeted')
+    return;
+  }
+  return params;
+}
+
 const checkIfReactionFromSameUser = async function(params) {
   if (debugMode) return params;
   if (params.event.item_user === params.event.user) return;
@@ -316,7 +325,7 @@ const tweet = async function(params) {
   }
   console.log(`Tweeted: ${postInfo.content} - Received: `, tweetRet);
 
-  delete postCache.userId;
+  postCache[userId].tweeted = true;
   return params;
 }
 // exists for testing
@@ -392,6 +401,7 @@ app.action(/tweetConfirmation.*/, async (params) => {
 
 const reactionAddedPipeline = [
   checkIfConfirmed,
+  checkIfAlreadyTweeted,
   checkIfReactionFromSameUser,
   registerReaction,
   checkIfReactionThreshold,
