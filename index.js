@@ -21,6 +21,18 @@ const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
+let slackPost = async (channel, user, msgToSend, blocks) => {
+  // TODO: test this
+  console.log(`posting: ${msgToSend}`);
+  let msg = {
+    token: process.env.SLACK_BOT_TOKEN,
+    channel,
+    user,
+    text: msgToSend
+  };
+  if (blocks) msg.blocks = blocks;
+  return await app.client.chat.postMessage(msg);
+};
 let slackPostEphemeral = async (channel, user, msgToSend, blocks) => {
   console.log(`ephemerally posting: ${msgToSend}`);
   let msg = {
@@ -237,7 +249,9 @@ const registerConfirmation = async function(params) {
   let postInfo = postCache[userId];
   postInfo.confirmation = true;
 
-  await slackPostEphemeral(params.body.container.channel_id, params.body.user.id, `Great! I will tweet and let you know as soon as I get ${reactionCntForApproval} reactions on the posts.`);
+  await slackPostEphemeral(params.body.container.channel_id, params.body.user.id, `Great! As soon as I get ${reactionCntForApproval} reactions on the post, I will tweet and let you know.`);
+
+  await slackPost(params.body.container.channel_id, params.body.user.id, `Want to help <@${userId}> get his last message amplified on Twitter? Please vote it up and I will tweet it from the MegaMaker account.`);
 
   return params;
 }
