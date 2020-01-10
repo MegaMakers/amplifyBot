@@ -207,6 +207,7 @@ const checkRetweetOrSpecificPrefix = function(prefix) {
 const checkForConfirmation = async function(params) {
   if (params.action.value === 'no') {
     await slackPostEphemeral(params.body.container.channel_id, params.body.user.id, 'Sounds good :+1:. I will ignore that.');
+    delete postCache[params.body.user.id]; // allow another message to be queued
     return;
   }
   return params;
