@@ -6,6 +6,7 @@ const msgTxtForTweeting = ':twitter:';
 const patternForTwitterUrl = 'https:..twitter.com.[^/]*.status.(\d*)';
 const reactionCntForApproval = 3;
 const userPostLimit = 1000 * 60 * 1 * 60 * 24; // 1 post per 24 hours
+const tweetWithoutApprovalLimit = 1000 * 60 * 15; // 15 min
 
 // Initialize Twitter
 var twitterClient = new twitter({
@@ -134,7 +135,7 @@ Note: I don't currently support *all* emojis, while they might show up in Slack 
 }
 
 // QueueTweetWithExpiry will add the tweet and content to a cache which expires after a finite amount of time (default 15 minutes).
-const queueTweetWithExpiry = function(expiryInMS = 1000 * 60 * 15) {
+const queueTweetWithExpiry = function(expiryInMS) {
   let queueTweet = async function(params) {
     let msgToTweet = extractText(params.message);
     let userId = params.message.user;
@@ -375,7 +376,7 @@ const messagePipeline = [
   filterChannelJoins,
   checkRetweetOrSpecificPrefix(msgTxtForTweeting),
   checkUserPostLimits(userPostLimit),
-  queueTweetWithExpiry(1000 * 60 * 15), // 15 min
+  queueTweetWithExpiry(tweetWithoutApprovalLimit),
   confirmMsgForTweet,
   printDbg
 ];
