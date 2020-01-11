@@ -22,7 +22,6 @@ const app = new App({
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 let slackPost = async (channel, user, msgToSend, blocks) => {
-  // TODO: test this
   console.log(`posting: ${msgToSend}`);
   let msg = {
     token: process.env.SLACK_BOT_TOKEN,
@@ -67,7 +66,7 @@ const extractText = function(slackMsg) {
 
   // strip <> from url's
   while (extractedMsg.match(/<http[^\s]*>/)) {
-    var prefix = extractedMsg.match(/(.*)<http[^\s]*>/)[1];
+    var prefix = extractedMsg.substring(0, extractedMsg.match(/<http[^\s]*>/).index);
     var urlEndNdx = extractedMsg.indexOf('>', prefix.length);
     var url = extractedMsg.substring(prefix.length+1, urlEndNdx);
     if (url.indexOf('|') != -1) url = url.substring(url.indexOf('|')+1);
