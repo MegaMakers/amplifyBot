@@ -8,6 +8,26 @@ const reactionCntForApproval = 3;
 const userPostLimit = 1000 * 60 * 1 * 60 * 24; // 1 post per 24 hours
 const tweetWithoutApprovalLimit = 1000 * 60 * 15; // 15 min
 
+// should ideally use an off-the-shelf logger
+var log = {
+  _dtStr: function() {
+    return (new Date()).toISOString();
+  },
+  info: function(msg, params) {
+    if (!params)
+      console.log(`[${log._dtStr()}] INFO: ${msg}`);
+    else
+      console.log(`[${log._dtStr()}] INFO: ${msg}`, params);
+  },
+  error: function(msg, params) {
+    if (!params)
+      console.err(`[${log._dtStr()}] ERR: ${msg}`);
+    else
+      console.err(`[${log._dtStr()}] ERR: ${msg}`, params);
+  }
+}
+
+
 // Initialize Twitter
 var twitterClient = new twitter({
   consumer_key: process.env.TWITTER_CONSUMER_KEY,
@@ -22,7 +42,7 @@ const app = new App({
   signingSecret: process.env.SLACK_SIGNING_SECRET
 });
 let slackPost = async (channel, user, msgToSend, blocks) => {
-  console.log(`posting: ${msgToSend}`);
+  log.info(`posting: ${msgToSend}`);
   let msg = {
     token: process.env.SLACK_BOT_TOKEN,
     channel,
@@ -33,7 +53,7 @@ let slackPost = async (channel, user, msgToSend, blocks) => {
   return await app.client.chat.postMessage(msg);
 };
 let slackPostEphemeral = async (channel, user, msgToSend, blocks) => {
-  console.log(`ephemerally posting: ${msgToSend}`);
+  log.info(`ephemerally posting: ${msgToSend}`);
   let msg = {
     token: process.env.SLACK_BOT_TOKEN,
     channel,
@@ -54,7 +74,7 @@ const extractText = function(slackMsg) {
   let extractedMsg = slackMsg.text;
 
   if (!extractedMsg) {
-    console.log('ERR: Requested extractText but no found text. Full message:', slackMsg);
+    log.error('Requested extractText but no found text. Full message:', slackMsg);
     return null;
   }
 
@@ -177,12 +197,12 @@ const queueTweetWithExpiry = function(expiryInMS) {
 const checkRetweetOrSpecificPrefix = function(prefix) {
   const checkRetweetPrefix = async function(params) {
     // if (debugMode) {
-    //   console.log(`DEBUG_MODE: skipping prefix check`);
+    //   log.info(`DEBUG_MODE: skipping prefix check`);
     //   return params;
     // }
 
     if (!params.message.text) {
-      console.log(`Message not found ignoring - message.type: ${params.message.subtype}`);
+      log.info(`Message not found ignoring - message.type: ${params.message.subtype} user:${params.message.user}`);
       return;
     }
 
@@ -194,7 +214,7 @@ const checkRetweetOrSpecificPrefix = function(prefix) {
       return params;
     }
 
-    console.log(`Message does not start with '${prefix}' or does not include retweet - ignoring: `, params.message.text.substring(0, 80));
+    log.info(`Message does not start with '${prefix}' or does not include retweet - ignoring: `, params.message.text.substring(0, 80));
     return;
   };
 
@@ -264,11 +284,11 @@ const registerConfirmation = async function(params) {
 const checkIfConfirmed = async function(params) {
   let postInfo = postCache[params.event.item_user];
   if (!postInfo) {
-    console.log('Reaction on post that was not found')
+    log.info('Reaction on post that was not found')
     return;
   }
   if (postInfo.id !== params.event.item.ts) {
-    console.log('Reaction on post that was not confirmed')
+    log.info('Reaction on post that was not confirmed')
     return;
   }
   return params;
@@ -276,7 +296,7 @@ const checkIfConfirmed = async function(params) {
 const checkIfAlreadyTweeted = async function(params) {
   let postInfo = postCache[params.event.item_user];
   if (postInfo.tweeted) {
-    console.log('Reaction on post that was already tweeted')
+    log.info('Reaction on post that was already tweeted')
     return;
   }
   return params;
@@ -291,7 +311,7 @@ const registerReaction = async function(params) {
   let postInfo = postCache[params.event.item_user];
   if (!postInfo.reactionCnt) postInfo.reactionCnt = 0;
   postInfo.reactionCnt++;
-  console.log('Reaction count on message: ', postInfo.reactionCnt);
+  log.info('Reaction count on message: ', postInfo.reactionCnt);
   return params;
 }
 const checkIfReactionThreshold = async function(params) {
@@ -308,7 +328,7 @@ const tweet = async function(params) {
   try{
     await slackPostEphemeral(params.event.item.channel, params.event.item_user, `Hey <@${userId}>! - We got enough reactions. I am going ahead and tweeting: ${postInfo.content}`);
   } catch (err) {
-    console.log('Err posting to to slack!!!', err);
+    log.error('Posting to slack!!!', err);
   }
 
   let tweetRet;
@@ -333,12 +353,12 @@ const tweet = async function(params) {
         tweetRet = await twitterClient.post('statuses/update', twitterMsg);
       }
     } catch (err) {
-      console.log('Err posting to twitter!!!', err);
+      log.error('Posting to twitter!!!', err);
     }
   } else {
     tweetRet = { status: 'DEBUG_MODE: did not really send' };
   }
-  console.log(`Tweeted: ${postInfo.content} - Received: `, tweetRet);
+  log.info(`Tweeted: ${postInfo.content} - Received: `, tweetRet);
 
   postCache[userId].tweeted = true;
   return params;
@@ -362,27 +382,27 @@ const forceTweet = async function(txt) {
 
 const printDbg = async function(params) {
   if (params.message) {
-    console.log('Debug - message:', params.message);
+    log.info('Debug - message:', params.message);
     return params;
   }
-  if (params.action) console.log('Debug - action:', params.action);
-  if (params.event) console.log('Debug - event:', params.event);
+  if (params.action) log.info('Debug - action:', params.action);
+  if (params.event) log.info('Debug - event:', params.event);
   return params;
 }
 
 // Hook up the pipelines
 const processPipe = async function(pipeName, pipe, params) {
-  console.log(`==> [${pipeName}] Received notification`);
+  log.info(`==> [${pipeName}] Received notification`);
 
   for (let processor of pipe) {
-    console.log(`==> [${pipeName}] Processing with processor: ${processor.name}`)
+    log.info(`==> [${pipeName}] Processing with processor: ${processor.name}`)
     params = await processor(params);
     if (!params) {
-      console.log(`<== [${pipeName}] Finished processing`)
+      log.info(`<== [${pipeName}] Finished processing`)
       return;
     }
   }
-  console.log(`<== [${pipeName}] Finished processing`)
+  log.info(`<== [${pipeName}] Finished processing`)
 }
 
 
@@ -434,5 +454,5 @@ app.event('reaction_added', async (params) => {
   const appPort = process.env.PORT || 3000;
   await app.start(appPort);
 
-  console.log(`App is running at ${appPort}`);
+  log.info(`App is running at ${appPort}`);
 })();
